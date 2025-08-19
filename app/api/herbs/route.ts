@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { CreateHerbSchema, ListHerbSchema } from '@/lib/zod/herb'
 import { toSlug } from '@/lib/slug'
 import { cookies } from 'next/headers'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 function ok(data: unknown) {
 	return NextResponse.json({ ok: true, data })

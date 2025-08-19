@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { unlink } from 'fs/promises'
 import path from 'path'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 function ok(data: unknown) {
 	return NextResponse.json({ ok: true, data })
