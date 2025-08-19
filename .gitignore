@@ -1,0 +1,27 @@
+# Dependencies / build
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+.turbo/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs / misc
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+.DS_Store
+*.swp
+.idea/
+.vscode/
+coverage/
+.prisma/
+prisma/*.db
+prisma/*.db-journal

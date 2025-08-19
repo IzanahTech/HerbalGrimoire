@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Herb {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  name              String
+  scientificName    String?
+  description       String?
+  properties        String?
+  uses              String?
+  contraindications String?
+  customSections    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  constituents      String?
+  dosage            String?
+  energetics        String?
+  family            String?
+  harvesting        String?
+  location          String?
+  notesOnUse        String?
+  partsUsed         String?
+  recipes           String?
+  images            Image[]
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  herbId    String
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  herb      Herb     @relation(fields: [herbId], references: [id], onDelete: Cascade)
+}
