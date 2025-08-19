@@ -25,3 +25,4 @@ coverage/
 .prisma/
 prisma/*.db
 prisma/*.db-journal
+node_modules

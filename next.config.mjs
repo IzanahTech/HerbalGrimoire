@@ -3,15 +3,39 @@ import crypto from 'crypto'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	env: {
-		NEXT_PUBLIC_BASE_URL: 'http://localhost:3000'
+		NEXT_PUBLIC_BASE_URL: process.env.VERCEL_URL 
+			? `https://${process.env.VERCEL_URL}` 
+			: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 	},
 	images: {
 		remotePatterns: [
 			{
 				protocol: 'https',
 				hostname: 'picsum.photos'
+			},
+			{
+				protocol: 'https',
+				hostname: '*.vercel.app'
+			},
+			{
+				protocol: 'https',
+				hostname: 'vercel.app'
 			}
-		]
+		],
+		// Enable image optimization for Vercel
+		unoptimized: false,
+		// Allow external domains for production
+		domains: process.env.NODE_ENV === 'production' ? ['picsum.photos'] : []
+	},
+	// Vercel deployment optimizations
+	experimental: {
+		// Optimize package imports
+		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons']
+	},
+	// Compiler options
+	compiler: {
+		// Remove console logs in production
+		removeConsole: process.env.NODE_ENV === 'production'
 	},
 	async headers() {
 		const isProduction = process.env.NODE_ENV === 'production'
@@ -50,7 +74,7 @@ const nextConfig = {
 								"default-src 'self'",
 								"script-src 'self' 'nonce-" + nonce + "'",
 								"style-src 'self' 'nonce-" + nonce + "'",
-								"img-src 'self' data: blob: https://picsum.photos",
+								"img-src 'self' data: blob: https://picsum.photos https://*.vercel.app",
 								"font-src 'self'",
 								"connect-src 'self'",
 								"media-src 'self'",
