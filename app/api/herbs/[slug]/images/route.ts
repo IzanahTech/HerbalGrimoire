@@ -2,10 +2,9 @@ export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { uploadImage, generateFilename } from '@/lib/blob'
 
 // File signature verification (magic bytes)
 const FILE_SIGNATURES = {
@@ -107,10 +106,6 @@ export async function POST(
 			}
 		}
 
-		// Create upload directory
-		const uploadDir = path.join(process.cwd(), 'public', 'uploads', herb.id)
-		await mkdir(uploadDir, { recursive: true })
-
 		// Determine starting position
 		const existingCount = await prisma.image.count({ where: { herbId: herb.id } })
 		let position = existingCount
@@ -129,18 +124,15 @@ export async function POST(
 				return badRequest(`File signature verification failed for ${f.name}. File may be corrupted or spoofed.`)
 			}
 			
-			const timestamp = Date.now()
-			const randomId = Math.random().toString(36).substring(2, 15)
-			const extension = ALLOWED_TYPES[f.type as keyof typeof ALLOWED_TYPES]
-			if (!extension) continue
-			const filename = `${timestamp}-${randomId}${extension}`
-
-			const filePath = path.join(uploadDir, filename)
-			await writeFile(filePath, buffer)
+			// Generate unique filename
+			const filename = generateFilename(f.name, herb.slug)
+			
+			// Upload to Vercel Blob (production) or local storage (development)
+			const uploadResult = await uploadImage(f, filename, item.alt)
 
 			const image = await prisma.image.create({
 				data: {
-					url: `/uploads/${herb.id}/${filename}`,
+					url: uploadResult.url,
 					alt: item.alt || '',
 					herbId: herb.id,
 					position,

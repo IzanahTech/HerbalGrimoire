@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { unlink } from 'fs/promises'
-import path from 'path'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { deleteImage } from '@/lib/blob'
 
 function ok(data: unknown) {
 	return NextResponse.json({ ok: true, data })
@@ -19,10 +18,10 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ slu
 	const image = await prisma.image.findUnique({ where: { id } })
 	if (!image) return badRequest('Not found', 404)
 	try {
-		if (image.url.startsWith('/uploads/')) {
-			const filePath = path.join(process.cwd(), 'public', image.url)
-			await unlink(filePath).catch(() => {})
-		}
+		// Delete from Vercel Blob (production) or local storage (development)
+		await deleteImage(image.url)
+		
+		// Delete from database
 		await prisma.image.delete({ where: { id: image.id } })
 		return ok({ deleted: true })
 	} catch (e: unknown) {
