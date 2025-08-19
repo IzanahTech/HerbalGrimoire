@@ -37,6 +37,31 @@ const nextConfig = {
 		// Remove console logs in production
 		removeConsole: process.env.NODE_ENV === 'production'
 	},
+	// Vercel-specific configurations
+	trailingSlash: false,
+	// Redirects (if needed)
+	async redirects() {
+		return [
+			// Add any redirects here if needed
+			// Example: redirect old URLs to new ones
+			// {
+			//   source: '/old-page',
+			//   destination: '/new-page',
+			//   permanent: true,
+			// },
+		]
+	},
+	// Rewrites (if needed)
+	async rewrites() {
+		return [
+			// Add any rewrites here if needed
+			// Example: rewrite API calls to external services
+			// {
+			//   source: '/api/external/:path*',
+			//   destination: 'https://api.external.com/:path*',
+			// },
+		]
+	},
 	async headers() {
 		const isProduction = process.env.NODE_ENV === 'production'
 		
@@ -97,6 +122,24 @@ const nextConfig = {
 								"form-action 'self'",
 								"frame-ancestors 'none'"
 							].join('; ')
+					}
+				]
+			},
+			// API-specific headers
+			{
+				source: '/api/(.*)',
+				headers: [
+					{
+						key: 'Access-Control-Allow-Origin',
+						value: '*'
+					},
+					{
+						key: 'Access-Control-Allow-Methods',
+						value: 'GET, POST, PUT, DELETE, OPTIONS'
+					},
+					{
+						key: 'Access-Control-Allow-Headers',
+						value: 'Content-Type, Authorization'
 					}
 				]
 			}
