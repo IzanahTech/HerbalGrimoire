@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 			include: { images: { orderBy: { position: 'asc' } } },
 		})
 
-		const result = herbs.map((h) => ({
+		const result = herbs.map((h: any) => ({
 			id: h.id,
 			slug: h.slug,
 			name: h.name,
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 			properties: h.properties ? JSON.parse(h.properties) : [],
 			uses: h.uses ? JSON.parse(h.uses) : [],
 			customSections: h.customSections ? JSON.parse(h.customSections) : [],
-			images: h.images.map((img) => ({
+			images: h.images.map((img: any) => ({
 				id: img.id,
 				url: img.url,
 				alt: img.alt ?? undefined,
