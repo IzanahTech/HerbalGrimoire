@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
 
 function ok(data: unknown) {
 	return NextResponse.json({ ok: true, data })
@@ -30,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
 	if (!parsed.success) return badRequest('imageId required')
 	const { imageId } = parsed.data
 
-	await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+	await prisma.$transaction(async (tx: any) => {
 		await tx.image.updateMany({ where: { herbId: herb.id }, data: { isPrimary: false } })
 		await tx.image.update({ where: { id: imageId }, data: { isPrimary: true } })
 	})
