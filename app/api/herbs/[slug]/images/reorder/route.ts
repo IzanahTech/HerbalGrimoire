@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 function ok(data: unknown) {
 	return NextResponse.json({ ok: true, data })
@@ -32,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
 	if (!parsed.success) return badRequest('Order must be an array of image IDs')
 	const { order, setPrimaryFromFirst } = parsed.data
 
-	await prisma.$transaction(async (tx) => {
+	await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
 		for (let i = 0; i < order.length; i++) {
 			await tx.image.update({ where: { id: order[i], herbId: herb.id }, data: { position: i } })
 		}
