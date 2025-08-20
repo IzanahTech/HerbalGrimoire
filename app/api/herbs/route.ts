@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
 import { CreateHerbSchema, ListHerbSchema } from '@/lib/zod/herb'
 import { toSlug } from '@/lib/slug'
 import { cookies } from 'next/headers'
@@ -19,7 +18,7 @@ export async function GET(req: NextRequest) {
 		const q = searchParams.get('q')?.toLowerCase() || undefined
 		const letter = searchParams.get('letter')?.toLowerCase() || undefined
 
-		const where: Prisma.HerbWhereInput = {}
+		const where: any = {}
 		if (q) {
 			where.OR = [
 				{ name: { contains: q } },
