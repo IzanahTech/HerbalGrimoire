@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 		}))
 
 		// Validate the result with Zod
-		const validatedResult = result.map(herb => ListHerbSchema.parse(herb))
+		const validatedResult = result.map((herb: any) => ListHerbSchema.parse(herb))
 		
 		return ok(validatedResult)
 	} catch (error) {
