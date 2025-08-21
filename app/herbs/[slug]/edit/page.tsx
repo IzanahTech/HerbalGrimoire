@@ -3,28 +3,43 @@ import { ImageUploader } from '@/components/ImageUploader'
 import { CustomSectionsPanel } from '@/components/CustomSectionsPanel'
 import { DefaultSectionsEditor } from '@/components/DefaultSectionsEditor'
 import { isAdminServer } from '@/lib/admin'
-import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { CreateHerb } from '@/lib/zod/herb'
+import { prisma } from '@/lib/prisma'
 
-async function fetchHerb(slug: string) {
-	// Get the host from headers for server-side rendering
-	const headersList = await headers()
-	const host = headersList.get('host') || 'localhost:3000'
-	const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-	const baseUrl = `${protocol}://${host}`
+async function fetchHerbDirect(slug: string) {
+	try {
+		const herb = await prisma.herb.findUnique({
+			where: { slug },
+			include: { images: { orderBy: { position: 'asc' } } }
+		})
 
-	const res = await fetch(`${baseUrl}/api/herbs/${slug}`, { cache: 'no-store' })
-	if (!res.ok) throw new Error('Failed to load')
-	const json = await res.json()
-	return json.data
+		if (!herb) return null
+
+		// Parse JSON fields
+		const result = {
+			...herb,
+			properties: herb.properties ? JSON.parse(herb.properties) : [],
+			uses: herb.uses ? JSON.parse(herb.uses) : [],
+			contraindications: herb.contraindications ? herb.contraindications : '',
+			partsUsed: herb.partsUsed ? JSON.parse(herb.partsUsed) : [],
+			constituents: herb.constituents ? JSON.parse(herb.constituents) : [],
+			recipes: herb.recipes ? JSON.parse(herb.recipes) : [],
+			customSections: herb.customSections ? JSON.parse(herb.customSections) : {}
+		}
+
+		return result
+	} catch (error) {
+		console.error('Error fetching herb directly:', error)
+		return null
+	}
 }
 
 export default async function EditHerbPage({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params
 	if (!(await isAdminServer())) notFound()
 
-	const herb = await fetchHerb(slug)
+	const herb = await fetchHerbDirect(slug)
 	if (!herb) notFound()
 
 	// Transform herb data to match CreateHerb type
@@ -53,7 +68,7 @@ export default async function EditHerbPage({ params }: { params: Promise<{ slug:
 		
 		try {
 			const response = await fetch(`/api/herbs/${slug}`, {
-				method: 'PATCH',
+				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
 				},

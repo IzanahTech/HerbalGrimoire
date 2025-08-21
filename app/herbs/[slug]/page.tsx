@@ -5,24 +5,39 @@ import { DetailShortcuts } from '@/components/DetailShortcuts'
 import { defaultSections } from '@/lib/defaultSections'
 import { isAdminServer } from '@/lib/admin'
 import { Leaf } from 'lucide-react'
-import { headers } from 'next/headers'
+import { prisma } from '@/lib/prisma'
 
-async function fetchHerb(slug: string) {
-	// Get the host from headers for server-side rendering
-	const headersList = await headers()
-	const host = headersList.get('host') || 'localhost:3000'
-	const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-	const baseUrl = `${protocol}://${host}`
-	
-	const res = await fetch(`${baseUrl}/api/herbs/${slug}`, { cache: 'no-store' })
-	if (!res.ok) return null
-	const json = await res.json()
-	return json.data
+async function fetchHerbDirect(slug: string) {
+	try {
+		const herb = await prisma.herb.findUnique({
+			where: { slug },
+			include: { images: { orderBy: { position: 'asc' } } }
+		})
+
+		if (!herb) return null
+
+		// Parse JSON fields
+		const result = {
+			...herb,
+			properties: herb.properties ? JSON.parse(herb.properties) : [],
+			uses: herb.uses ? JSON.parse(herb.uses) : [],
+			contraindications: herb.contraindications ? JSON.parse(herb.contraindications) : '',
+			partsUsed: herb.partsUsed ? JSON.parse(herb.partsUsed) : [],
+			constituents: herb.constituents ? JSON.parse(herb.constituents) : [],
+			recipes: herb.recipes ? JSON.parse(herb.recipes) : [],
+			customSections: herb.customSections ? JSON.parse(herb.customSections) : {}
+		}
+
+		return result
+	} catch (error) {
+		console.error('Error fetching herb directly:', error)
+		return null
+	}
 }
 
 export default async function HerbReadPage({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params
-	const herb = await fetchHerb(slug)
+	const herb = await fetchHerbDirect(slug)
 	if (!herb) return <div className="text-center text-gray-500">Not found</div>
 	const isAdmin = await isAdminServer()
 
