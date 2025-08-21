@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
-import crypto from 'crypto'
 
 // Rate limiting store (in production, use Redis)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
@@ -9,6 +8,13 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
 const loginSchema = z.object({
 	password: z.string().min(1, 'Password is required')
 })
+
+// Generate secure random token using Web Crypto API
+function generateSecureToken(): string {
+	const array = new Uint8Array(32)
+	crypto.getRandomValues(array)
+	return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+}
 
 export async function POST(request: NextRequest) {
 	try {
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
 		loginAttempts.delete(clientIP)
 
 		// Generate secure session token
-		const sessionToken = crypto.randomBytes(32).toString('hex')
+		const sessionToken = generateSecureToken()
 		const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
 		// Set secure cookie with session token
@@ -85,6 +91,15 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
+		// Log error details for debugging
+		if (process.env.NODE_ENV === 'development') {
+			console.error('Login error details:', {
+				message: error instanceof Error ? error.message : 'Unknown error',
+				name: error instanceof Error ? error.name : 'Unknown',
+				stack: error instanceof Error ? error.stack : undefined
+			})
+		}
+		
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
 				{ error: 'Invalid request data' },
@@ -92,9 +107,13 @@ export async function POST(request: NextRequest) {
 			)
 		}
 		
-		console.error('Login error:', error)
+		// Return generic error in production, detailed in development
+		const errorMessage = process.env.NODE_ENV === 'development' 
+			? (error instanceof Error ? error.message : 'Unknown error')
+			: 'Internal server error'
+		
 		return NextResponse.json(
-			{ error: 'Internal server error' },
+			{ error: errorMessage },
 			{ status: 500 }
 		)
 	}
