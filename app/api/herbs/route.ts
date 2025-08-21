@@ -123,11 +123,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
 	try {
-		// Check admin authentication
+		// Check admin authentication using new session system
 		const cookieStore = await cookies()
-		const adminCookie = cookieStore.get('admin-auth')
-		if (adminCookie?.value !== 'true') {
-			return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+		const sessionCookie = cookieStore.get('admin-session')
+		const expiryCookie = cookieStore.get('admin-expiry')
+		
+		let isAdmin = false
+		if (sessionCookie?.value && expiryCookie?.value) {
+			try {
+				const expiry = new Date(expiryCookie.value)
+				isAdmin = expiry > new Date()
+			} catch {
+				isAdmin = false
+			}
+		}
+		
+		if (!isAdmin) {
+			return NextResponse.json({ ok: false, error: 'Unauthorized: Admin session required' }, { status: 401 })
 		}
 
 		let json: unknown

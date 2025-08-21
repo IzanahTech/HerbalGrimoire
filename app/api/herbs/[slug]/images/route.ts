@@ -57,6 +57,30 @@ function badRequest(message: string, status = 400) {
 	return NextResponse.json({ ok: false, error: message }, { status })
 }
 
+// Helper function to check admin authentication
+async function checkAdminAuth(): Promise<boolean> {
+	const cookieStore = await cookies()
+	const sessionCookie = cookieStore.get('admin-session')
+	const expiryCookie = cookieStore.get('admin-expiry')
+	
+	if (!sessionCookie?.value || !expiryCookie?.value) {
+		return false
+	}
+	
+	// Check if session has expired
+	try {
+		const expiry = new Date(expiryCookie.value)
+		if (expiry < new Date()) {
+			return false
+		}
+	} catch {
+		return false
+	}
+	
+	// Session is valid
+	return true
+}
+
 export async function POST(
 	request: NextRequest,
 	{ params }: { params: Promise<{ slug: string }> }
@@ -64,11 +88,10 @@ export async function POST(
 	try {
 		const { slug } = await params
 		
-		// Check admin authentication
-		const cookieStore = await cookies()
-		const adminCookie = cookieStore.get('admin-auth')
-		if (adminCookie?.value !== 'true') {
-			return badRequest('Unauthorized', 401)
+		// Check admin authentication using new session system
+		const isAdmin = await checkAdminAuth()
+		if (!isAdmin) {
+			return badRequest('Unauthorized: Admin session required', 401)
 		}
 
 		// Validate herb exists
