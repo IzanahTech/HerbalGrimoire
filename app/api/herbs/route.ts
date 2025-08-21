@@ -14,8 +14,16 @@ function badRequest(message: string) {
 
 export async function GET(req: NextRequest) {
 	try {
-		// Test database connection first
-		await prisma.$connect()
+		// Test database connection with timeout
+		const connectionPromise = prisma.$connect()
+		const timeoutPromise = new Promise((_, reject) => 
+			setTimeout(() => reject(new Error('Database connection timeout')), 10000)
+		)
+		
+		await Promise.race([connectionPromise, timeoutPromise])
+		
+		// Test basic database functionality
+		await prisma.$queryRaw`SELECT 1 as test`
 		
 		const { searchParams } = new URL(req.url)
 		const q = searchParams.get('q')?.toLowerCase() || undefined
@@ -31,6 +39,15 @@ export async function GET(req: NextRequest) {
 		}
 		if (letter) {
 			where.name = { startsWith: letter }
+		}
+
+		// Test if herbs table exists and is accessible
+		try {
+			const herbCount = await prisma.herb.count()
+			console.log(`Found ${herbCount} herbs in database`)
+		} catch (tableError) {
+			console.error('Error accessing herbs table:', tableError)
+			throw new Error(`Database table error: ${tableError instanceof Error ? tableError.message : 'Unknown'}`)
 		}
 
 		const herbs = await prisma.herb.findMany({
@@ -83,13 +100,18 @@ export async function GET(req: NextRequest) {
 		
 		// Provide more specific error messages
 		let errorMessage = 'Failed to fetch herbs'
+		let statusCode = 500
+		
 		if (error instanceof Error) {
-			if (error.message.includes('connect')) {
+			if (error.message.includes('connect') || error.message.includes('timeout')) {
 				errorMessage = 'Database connection failed'
-			} else if (error.message.includes('schema')) {
+				statusCode = 503
+			} else if (error.message.includes('schema') || error.message.includes('table')) {
 				errorMessage = 'Database schema error'
-			} else if (error.message.includes('timeout')) {
-				errorMessage = 'Database request timeout'
+				statusCode = 500
+			} else if (error.message.includes('permission')) {
+				errorMessage = 'Database permission denied'
+				statusCode = 403
 			}
 		}
 		
@@ -98,13 +120,19 @@ export async function GET(req: NextRequest) {
 				ok: false, 
 				error: errorMessage, 
 				details: error instanceof Error ? error.message : 'Unknown error',
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
+				environment: process.env.NODE_ENV || 'unknown',
+				databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set'
 			},
-			{ status: 500 }
+			{ status: statusCode }
 		)
 	} finally {
 		// Always disconnect to free up connections
-		await prisma.$disconnect()
+		try {
+			await prisma.$disconnect()
+		} catch (disconnectError) {
+			console.error('Error disconnecting from database:', disconnectError)
+		}
 	}
 }
 
