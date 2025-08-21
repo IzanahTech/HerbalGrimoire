@@ -28,10 +28,10 @@ const nextConfig = {
 	// Vercel deployment optimizations
 	experimental: {
 		// Optimize package imports
-		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-		// Ensure Prisma is properly handled
-		serverComponentsExternalPackages: ['@prisma/client']
+		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons']
 	},
+	// Server external packages for Prisma
+	serverExternalPackages: ['@prisma/client'],
 	// Compiler options
 	compiler: {
 		// Remove console logs in production
