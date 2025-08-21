@@ -3,8 +3,25 @@ import { redirect } from 'next/navigation'
 
 export async function isAdminServer(): Promise<boolean> {
 	const cookieStore = await cookies()
-	const adminCookie = cookieStore.get('admin-auth')
-	return adminCookie?.value === 'true'
+	const sessionCookie = cookieStore.get('admin-session')
+	const expiryCookie = cookieStore.get('admin-expiry')
+	
+	if (!sessionCookie?.value || !expiryCookie?.value) {
+		return false
+	}
+	
+	// Check if session has expired
+	try {
+		const expiry = new Date(expiryCookie.value)
+		if (expiry < new Date()) {
+			return false
+		}
+	} catch {
+		return false
+	}
+	
+	// Session is valid
+	return true
 }
 
 export async function requireAdmin() {

@@ -4,15 +4,27 @@ import { cookies } from 'next/headers'
 export async function GET() {
 	try {
 		const cookieStore = await cookies()
-		const adminCookie = cookieStore.get('admin-auth')
-		const isAdmin = adminCookie?.value === 'true'
+		const sessionCookie = cookieStore.get('admin-session')
+		const expiryCookie = cookieStore.get('admin-expiry')
+		
+		let isAdmin = false
+		if (sessionCookie?.value && expiryCookie?.value) {
+			try {
+				const expiry = new Date(expiryCookie.value)
+				isAdmin = expiry > new Date()
+			} catch {
+				isAdmin = false
+			}
+		}
 		
 		return NextResponse.json({ 
 			isAdmin,
 			authenticated: !!isAdmin
 		})
 	} catch (error) {
-		console.error('Admin check error:', error)
+		if (process.env.NODE_ENV === 'development') {
+			console.error('Admin check error:', error)
+		}
 		return NextResponse.json({ 
 			isAdmin: false,
 			authenticated: false 

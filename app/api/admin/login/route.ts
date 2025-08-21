@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
+import crypto from 'crypto'
 
 // Rate limiting store (in production, use Redis)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
@@ -59,9 +60,22 @@ export async function POST(request: NextRequest) {
 		// Reset attempts on successful login
 		loginAttempts.delete(clientIP)
 
-		// Set secure cookie
+		// Generate secure session token
+		const sessionToken = crypto.randomBytes(32).toString('hex')
+		const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+		// Set secure cookie with session token
 		const cookieStore = await cookies()
-		cookieStore.set('admin-auth', 'true', {
+		cookieStore.set('admin-session', sessionToken, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'strict',
+			maxAge: 60 * 60 * 24, // 24 hours
+			path: '/'
+		})
+
+		// Set session expiry cookie
+		cookieStore.set('admin-expiry', sessionExpiry.toISOString(), {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'strict',
