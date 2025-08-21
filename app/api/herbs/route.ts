@@ -14,6 +14,9 @@ function badRequest(message: string) {
 
 export async function GET(req: NextRequest) {
 	try {
+		// Test database connection first
+		await prisma.$connect()
+		
 		const { searchParams } = new URL(req.url)
 		const q = searchParams.get('q')?.toLowerCase() || undefined
 		const letter = searchParams.get('letter')?.toLowerCase() || undefined
@@ -61,10 +64,47 @@ export async function GET(req: NextRequest) {
 		return ok(validatedResult)
 	} catch (error) {
 		console.error('Error fetching herbs:', error)
+		
+		// Log more details for debugging
+		if (error instanceof Error) {
+			console.error('Error message:', error.message)
+			console.error('Error stack:', error.stack)
+		}
+		
+		// Check if it's a database connection error
+		if (error && typeof error === 'object' && 'code' in error) {
+			console.error('Database error code:', (error as any).code)
+		}
+		
+		// Check if it's a Prisma error
+		if (error && typeof error === 'object' && 'name' in error) {
+			console.error('Error name:', (error as any).name)
+		}
+		
+		// Provide more specific error messages
+		let errorMessage = 'Failed to fetch herbs'
+		if (error instanceof Error) {
+			if (error.message.includes('connect')) {
+				errorMessage = 'Database connection failed'
+			} else if (error.message.includes('schema')) {
+				errorMessage = 'Database schema error'
+			} else if (error.message.includes('timeout')) {
+				errorMessage = 'Database request timeout'
+			}
+		}
+		
 		return NextResponse.json(
-			{ ok: false, error: 'Failed to fetch herbs' },
+			{ 
+				ok: false, 
+				error: errorMessage, 
+				details: error instanceof Error ? error.message : 'Unknown error',
+				timestamp: new Date().toISOString()
+			},
 			{ status: 500 }
 		)
+	} finally {
+		// Always disconnect to free up connections
+		await prisma.$disconnect()
 	}
 }
 

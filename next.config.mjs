@@ -23,14 +23,14 @@ const nextConfig = {
 			}
 		],
 		// Enable image optimization for Vercel
-		unoptimized: false,
-		// Allow external domains for production
-		domains: process.env.NODE_ENV === 'production' ? ['picsum.photos'] : []
+		unoptimized: false
 	},
 	// Vercel deployment optimizations
 	experimental: {
 		// Optimize package imports
-		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons']
+		optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+		// Ensure Prisma is properly handled
+		serverComponentsExternalPackages: ['@prisma/client']
 	},
 	// Compiler options
 	compiler: {
@@ -39,27 +39,26 @@ const nextConfig = {
 	},
 	// Vercel-specific configurations
 	trailingSlash: false,
+	// Ensure proper server-side rendering
+	output: 'standalone',
+	// Webpack configuration for Prisma
+	webpack: (config, { isServer }) => {
+		if (isServer) {
+			config.externals = config.externals || []
+			config.externals.push('@prisma/client')
+		}
+		return config
+	},
 	// Redirects (if needed)
 	async redirects() {
 		return [
 			// Add any redirects here if needed
-			// Example: redirect old URLs to new ones
-			// {
-			//   source: '/old-page',
-			//   destination: '/new-page',
-			//   permanent: true,
-			// },
 		]
 	},
 	// Rewrites (if needed)
 	async rewrites() {
 		return [
 			// Add any rewrites here if needed
-			// Example: rewrite API calls to external services
-			// {
-			//   source: '/api/external/:path*',
-			//   destination: 'https://api.external.com/:path*',
-			// },
 		]
 	},
 	async headers() {
