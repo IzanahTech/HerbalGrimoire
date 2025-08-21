@@ -17,7 +17,10 @@ export async function GET() {
 			environment: process.env.NODE_ENV || 'unknown'
 		})
 	} catch (error) {
-		console.error('Health check failed:', error)
+		// Log error for debugging (only in development)
+		if (process.env.NODE_ENV === 'development') {
+			console.error('Health check failed:', error)
+		}
 		
 		return NextResponse.json({
 			status: 'unhealthy',

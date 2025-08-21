@@ -43,10 +43,8 @@ export async function GET(req: NextRequest) {
 
 		// Test if herbs table exists and is accessible
 		try {
-			const herbCount = await prisma.herb.count()
-			console.log(`Found ${herbCount} herbs in database`)
+			await prisma.herb.count()
 		} catch (tableError) {
-			console.error('Error accessing herbs table:', tableError)
 			throw new Error(`Database table error: ${tableError instanceof Error ? tableError.message : 'Unknown'}`)
 		}
 
@@ -80,25 +78,12 @@ export async function GET(req: NextRequest) {
 		
 		return ok(validatedResult)
 	} catch (error) {
-		console.error('Error fetching herbs:', error)
-		
-		// Log more details for debugging
-		if (error instanceof Error) {
-			console.error('Error message:', error.message)
-			console.error('Error stack:', error.stack)
+		// Log error for debugging (only in development)
+		if (process.env.NODE_ENV === 'development') {
+			console.error('Error fetching herbs:', error)
 		}
 		
-		// Check if it's a database connection error
-		if (error && typeof error === 'object' && 'code' in error) {
-			console.error('Database error code:', (error as any).code)
-		}
-		
-		// Check if it's a Prisma error
-		if (error && typeof error === 'object' && 'name' in error) {
-			console.error('Error name:', (error as any).name)
-		}
-		
-		// Provide more specific error messages
+		// Provide specific error messages
 		let errorMessage = 'Failed to fetch herbs'
 		let statusCode = 500
 		
@@ -118,11 +103,8 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json(
 			{ 
 				ok: false, 
-				error: errorMessage, 
-				details: error instanceof Error ? error.message : 'Unknown error',
-				timestamp: new Date().toISOString(),
-				environment: process.env.NODE_ENV || 'unknown',
-				databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set'
+				error: errorMessage,
+				timestamp: new Date().toISOString()
 			},
 			{ status: statusCode }
 		)
@@ -131,7 +113,10 @@ export async function GET(req: NextRequest) {
 		try {
 			await prisma.$disconnect()
 		} catch (disconnectError) {
-			console.error('Error disconnecting from database:', disconnectError)
+			// Silent fail in production
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Error disconnecting from database:', disconnectError)
+			}
 		}
 	}
 }
