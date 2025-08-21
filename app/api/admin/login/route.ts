@@ -18,8 +18,12 @@ export async function POST(request: NextRequest) {
 		// Check password
 		const correctPassword = process.env.ADMIN_PASSWORD
 		if (!correctPassword) {
+			console.error('ADMIN_PASSWORD environment variable not set in production')
 			return NextResponse.json(
-				{ error: 'Server configuration error' },
+				{ 
+					error: 'Server configuration error: Admin password not configured',
+					details: 'Please set ADMIN_PASSWORD environment variable in Vercel dashboard'
+				},
 				{ status: 500 }
 			)
 		}
