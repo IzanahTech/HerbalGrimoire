@@ -3,7 +3,7 @@ import { HerbCard } from '@/components/HerbCard'
 import { SearchBar } from '@/components/SearchBar'
 import Link from 'next/link'
 import { isAdminServer } from '@/lib/admin'
-import { headers } from 'next/headers'
+import { prisma } from '@/lib/prisma'
 
 const RANGE_MAP: Record<string, string[]> = {
 	'a-e': ['a', 'b', 'c', 'd', 'e'],
@@ -23,26 +23,44 @@ type ListHerb = {
 	images?: Array<{ id: string; url: string; alt?: string | null; isPrimary: boolean }>
 }
 
-async function fetchHerbs(q?: string | null, letter?: string | null): Promise<ListHerb[]> {
-	const params = new URLSearchParams()
-	if (q) params.set('q', q)
-	if (letter) params.set('letter', letter)
-	const query = params.toString()
-	
-	// Get the host from headers for server-side rendering
-	const headersList = await headers()
-	const host = headersList.get('host') || 'localhost:3000'
-	const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-	const baseUrl = `${protocol}://${host}`
-	
-	const url = query ? `${baseUrl}/api/herbs?${query}` : `${baseUrl}/api/herbs`
-	
-	const res = await fetch(url, {
-		next: { revalidate: 0 },
-	})
-	if (!res.ok) throw new Error('Failed to load herbs')
-	const json = await res.json()
-	return json.data as ListHerb[]
+async function fetchHerbsDirect(q?: string | null, letter?: string | null): Promise<ListHerb[]> {
+	try {
+		const where: any = {}
+		if (q) {
+			where.OR = [
+				{ name: { contains: q } },
+				{ scientificName: { contains: q } },
+				{ description: { contains: q } },
+			]
+		}
+		if (letter) {
+			where.name = { startsWith: letter }
+		}
+
+		const herbs = await prisma.herb.findMany({
+			where,
+			orderBy: { name: 'asc' },
+			include: { images: { orderBy: { position: 'asc' } } },
+		})
+
+		return herbs.map((h: any) => ({
+			id: h.id,
+			slug: h.slug,
+			name: h.name,
+			scientificName: h.scientificName ?? undefined,
+			properties: h.properties ? JSON.parse(h.properties) : [],
+			uses: h.uses ? JSON.parse(h.uses) : [],
+			images: h.images.map((img: any) => ({
+				id: img.id,
+				url: img.url,
+				alt: img.alt ?? undefined,
+				isPrimary: img.isPrimary,
+			}))
+		}))
+	} catch (error) {
+		console.error('Error fetching herbs directly:', error)
+		throw new Error('Failed to load herbs from database')
+	}
 }
 
 export default async function HomePage({ searchParams }: { searchParams?: Promise<{ q?: string; letter?: string; range?: string }> }) {
@@ -54,14 +72,14 @@ export default async function HomePage({ searchParams }: { searchParams?: Promis
 
 	let herbs: ListHerb[] = []
 	if (letters) {
-		const results = await Promise.all(letters.map((l) => fetchHerbs(q, l)))
+		const results = await Promise.all(letters.map((l) => fetchHerbsDirect(q, l)))
 		herbs = results.flat()
 		// de-duplicate by id
 		herbs = Array.from(new Map(herbs.map((h) => [h.id, h])).values())
 		// ensure order by name
 		herbs.sort((a, b) => a.name.localeCompare(b.name))
 	} else {
-		herbs = await fetchHerbs(q, params?.letter ?? null)
+		herbs = await fetchHerbsDirect(q, params?.letter ?? null)
 	}
 
 	const isAdmin = await isAdminServer()
